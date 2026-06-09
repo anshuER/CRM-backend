@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateOrganizationDto } from './schema/organisations.schema';
+import {
+  CreateOrganizationDto,
+  UpdateOrganizationDto,
+} from './schema/organisations.schema';
 
 @Injectable()
 export class OrganizationsService {
@@ -127,6 +130,25 @@ export class OrganizationsService {
     return {
       organization: membership.organization,
       role: membership.role,
+    };
+  }
+
+  async updateOrganizationName(
+    organizationId: string,
+    dto: UpdateOrganizationDto,
+  ) {
+    const upatedOrganization = await this.prisma.organization.update({
+      where: {
+        id: organizationId,
+      },
+      data: {
+        name: dto.name,
+      },
+    });
+
+    return {
+      message: 'Organization updated successfully',
+      upatedOrganization,
     };
   }
 }

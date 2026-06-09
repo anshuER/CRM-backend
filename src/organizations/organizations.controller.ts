@@ -15,11 +15,15 @@ import type { CurrentAuthUser } from '../auth/types/auth.types';
 import {
   type CreateOrganizationDto,
   createOrganizationSchema,
+  type UpdateOrganizationDto,
+  updateOrganizationSchema,
 } from './schema/organisations.schema';
 import { ZodValidationPipes } from 'src/auth/pipes/zod-validation.pipe';
 import { TenantGuard } from 'src/common/guards/tenant.guard';
 import { CurrentTenant } from 'src/common/decorators/current-tenant.decorator';
 import { type TenantContext } from 'src/common/types/tenant-context.type';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { RequiredRoles } from 'src/common/decorators/ roles.decorator';
 
 @ApiTags('organizations')
 @ApiBearerAuth()
@@ -158,6 +162,32 @@ export class OrganizationsController {
 
   @UseGuards(JwtAuthGuard, TenantGuard)
   @Get('current/context')
+  @ApiOperation({
+    summary: 'Get current tenant context',
+    description:
+      'Returns current authenticated user and tenant context for the active organization',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Current tenant context data',
+    schema: {
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          description: 'Authenticated user details',
+        },
+        tenant: {
+          type: 'object',
+          description: 'Active tenant context data',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
   getCurrentTenantContext(
     @CurrentUser() user: CurrentAuthUser,
     @CurrentTenant() tenant: TenantContext,
@@ -166,5 +196,99 @@ export class OrganizationsController {
       user,
       tenant,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+  @RequiredRoles('ORG_ADMIN')
+  @Get('admin-only')
+  @ApiOperation({
+    summary: 'Admin-only access check',
+    description:
+      'Verifies that the authenticated user has ORG_ADMIN permissions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User is authorized as organization admin',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Only ORG_ADMIN can access this route',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - user does not have ORG_ADMIN role',
+  })
+  adminOnlyRoute() {
+    return {
+      message: 'Only ORG_ADMIN can access this route',
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+  @RequiredRoles('ORG_ADMIN')
+  @Post('update-name')
+  @ApiOperation({
+    summary: 'Update organization name',
+    description: 'Updates the current organization name for the active tenant',
+  })
+  @ApiBody({
+    description: 'Organization name update payload',
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          example: 'Acme Corp Updated',
+          description: 'New organization name',
+        },
+      },
+      required: ['name'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Organization name updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        slug: { type: 'string' },
+        status: { type: 'string' },
+        createdAt: { type: 'string', format: 'date-time' },
+        updatedAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input data',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - user does not have ORG_ADMIN role',
+  })
+  updateOrganizationName(
+    @CurrentTenant() tenant: TenantContext,
+    @Body(new ZodValidationPipes(updateOrganizationSchema))
+    dto: UpdateOrganizationDto,
+  ) {
+    return this.organizationsService.updateOrganizationName(
+      tenant.organizationId,
+      dto,
+    );
   }
 }

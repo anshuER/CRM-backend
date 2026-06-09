@@ -17,6 +17,9 @@ import {
   createOrganizationSchema,
 } from './schema/organisations.schema';
 import { ZodValidationPipes } from 'src/auth/pipes/zod-validation.pipe';
+import { TenantGuard } from 'src/common/guards/tenant.guard';
+import { CurrentTenant } from 'src/common/decorators/current-tenant.decorator';
+import { type TenantContext } from 'src/common/types/tenant-context.type';
 
 @ApiTags('organizations')
 @ApiBearerAuth()
@@ -151,5 +154,17 @@ export class OrganizationsController {
       user.userId,
       organizationId,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, TenantGuard)
+  @Get('current/context')
+  getCurrentTenantContext(
+    @CurrentUser() user: CurrentAuthUser,
+    @CurrentTenant() tenant: TenantContext,
+  ) {
+    return {
+      user,
+      tenant,
+    };
   }
 }

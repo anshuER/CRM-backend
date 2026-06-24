@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
       envFilePath: '.env',
     }),
     OrganizationsModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

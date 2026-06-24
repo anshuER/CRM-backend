@@ -5,9 +5,15 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiHeader,
+} from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import type { CreateProjectDto } from './dto/create-project.dto';
 import type { UpdateProjectDto } from './dto/update-project.dto';
@@ -27,6 +33,13 @@ import {
 } from './schemas/project.schemas';
 import { ZodValidationPipes } from 'src/auth/pipes/zod-validation.pipe';
 
+@ApiTags('projects')
+@ApiBearerAuth()
+@ApiHeader({
+  name: 'x-organization-id',
+  description: 'Active organization ID for tenant-scoped project routes',
+  required: true,
+})
 @UseGuards(JwtAuthGuard, TenantGuard)
 @Controller('projects')
 export class ProjectsController {
@@ -35,14 +48,34 @@ export class ProjectsController {
   @UseGuards(RolesGuard)
   @RequiredRoles('ORG_ADMIN', 'MANAGER')
   @Post()
+  @ApiOperation({ summary: 'Create a new project' })
+  @ApiBody({
+    description: 'Project creation data',
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          example: 'Website redesign',
+          description: 'Project name (2-100 characters)',
+        },
+        description: {
+          type: 'string',
+          example: 'Redesign the marketing website and launch pages',
+          description: 'Optional project description (max 500 characters)',
+        },
+      },
+      required: ['name'],
+    },
+  })
   createProject(
     @CurrentUser() user: CurrentAuthUser,
     @CurrentTenant() tenant: TenantContext,
     @Body(new ZodValidationPipes(createProjectSchema)) dto: CreateProjectDto,
   ) {
     return this.projectsService.createProject(
-      tenant.organizationId,
       user.userId,
+      tenant.organizationId,
       dto,
     );
   }
@@ -66,6 +99,30 @@ export class ProjectsController {
   @UseGuards(RolesGuard)
   @RequiredRoles('ORG_ADMIN', 'MANAGER')
   @Patch(':projectId')
+  @ApiOperation({ summary: 'Update a project' })
+  @ApiBody({
+    description: 'Project update data',
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          example: 'Website redesign',
+          description: 'Project name (2-100 characters)',
+        },
+        description: {
+          type: 'string',
+          example: 'Updated project scope',
+          description: 'Optional project description (max 500 characters)',
+        },
+        status: {
+          type: 'string',
+          enum: ['ACTIVE', 'COMPLETED', 'ARCHIVED'],
+          example: 'ACTIVE',
+        },
+      },
+    },
+  })
   updateProject(
     @CurrentTenant() tenant: TenantContext,
     @Param('projectId') projectId: string,
@@ -105,6 +162,26 @@ export class ProjectsController {
   @UseGuards(RolesGuard)
   @RequiredRoles('ORG_ADMIN', 'MANAGER')
   @Post(':projectId/members')
+  @ApiOperation({ summary: 'Add a member to a project' })
+  @ApiBody({
+    description: 'Project member data',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string',
+          format: 'uuid',
+          example: '4a2d06ce-9111-4c34-82f1-42ec588f0019',
+        },
+        role: {
+          type: 'string',
+          enum: ['LEAD', 'MEMBER'],
+          example: 'MEMBER',
+        },
+      },
+      required: ['userId'],
+    },
+  })
   addProjectMember(
     @CurrentTenant() tenant: TenantContext,
     @Param('projectId') projectId: string,

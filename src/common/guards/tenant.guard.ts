@@ -3,9 +3,11 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Injectable,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
+@Injectable()
 export class TenantGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -13,7 +15,7 @@ export class TenantGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user.userId) {
+    if (!user?.userId) {
       throw new ForbiddenException('User not authorised');
     }
 
